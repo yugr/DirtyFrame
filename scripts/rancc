@@ -1,0 +1,81 @@
+#!/usr/bin/python
+
+# TODO:
+# * support 32-bits
+# * detect self-recursion
+
+import sys
+import os
+
+def has_prefix(s, p):
+  return s.find(p) == 0
+
+def has_any_prefix(s, ps):
+  return any(map(lambda p: has_prefix(s, p), prefix))
+
+verbose = 0
+
+def Note(msg):
+  sys.stderr.write('ranas: %s\n' % msg)
+
+def note(msg):
+  if verbose > 0:
+    Note(msg)
+
+def Warn(msg):
+    sys.stderr.write('ranas: warning: %s\n' % msg)
+
+def warn(msg):
+  if verbose > 0:
+    Warn(msg)
+
+def main():
+  mydir = os.path.dirname(os.path.abspath(__file__))
+
+  global verbose
+  verbose = int(os.getenv('RANCC_VERBOSE', '0'))
+  cc = os.getenv('RANCC_CC', 'gcc')
+  cxx = os.getenv('RANCC_CXX', 'g++')
+  tooldir = os.getenv('RANCC_TOOL_DIR', mydir + '/../libexec')
+  libdir = os.getenv('RANCC_LIB_DIR', mydir + '/../lib')
+
+  argv_string = ' '.join(sys.argv)
+  note('initial args: %s' % argv_string)
+
+  cplus = sys.argv[0].find('++') != -1
+
+  args = [cxx if cplus else cc]
+  has_B = False
+  has_pipe = False
+  maybe_link = True
+
+  for arg in sys.argv[1:]:
+    if has_prefix(arg, '-B'):
+      has_B = True
+    elif arg in ['-c', '-S', '-E']:
+      maybe_link = False
+    elif arg == '-pipe':
+      has_pipe = True
+    args.append(arg)
+
+  if has_B:
+    Warn('not instrumenting: -B given: %s' % argv_string)
+  elif has_pipe:
+    # TODO: this can be easily supported
+    Warn('not instrumenting: -pipe given: %s' % argv_string)
+  else:
+    args.append('-B' + tooldir)
+
+  if maybe_link:
+    note('linking: %s' % argv_string)
+    args += ['-L' + libdir, '-lrancc']
+
+  note('preprocessed args: %s' % ' '. join(args))
+
+  sys.stdout.flush()
+  sys.stderr.flush()
+
+  os.execvp(args[0], args)
+
+if __name__ == '__main__':
+  main()

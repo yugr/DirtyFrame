@@ -1,0 +1,234 @@
+#!/usr/bin/python
+
+# TODO:
+# * leave/enter
+# * redzones (can we instrument them at all?)
+
+import sys
+import os
+import re
+import tempfile
+
+verbose = 0
+
+def Note(msg):
+  sys.stderr.write('ranas: %s\n' % msg)
+
+def note(msg):
+  if verbose > 1:
+    Note(msg)
+
+def Warn(msg):
+    sys.stderr.write('ranas: warning: %s\n' % msg)
+
+def warn(msg):
+  if verbose > 0:
+    Warn(msg)
+
+class RegexCache(object):
+  def __init__(self):
+    self.last_match = None
+
+  def match(self, p, s):
+    self.last_match = p.match(s)
+    return self.last_match
+
+  def search(self, p, s):
+    self.last_match = p.search(s)
+    return self.last_match
+
+  def group(self, n):
+    return self.last_match.group(n)
+
+def op_size(s):
+  return ( 1 if s == 'b'
+    else 2 if s == 'w'
+    else 4 if s == 'l'
+    else 8 if s == 'q'
+    else -1 )
+
+def instrument(f, f_out, fill_value, dump):
+  note('instrumenting ' + f)
+
+  if not hasattr(instrument, 're_dir'):
+    instrument.re_dir = re.compile('^\s*\.[a-z]')
+    instrument.re_section = re.compile('^\s*\.(?:section|text|rodata|data|bss)')
+    instrument.re_dot_label = re.compile('^\s*.L')
+    instrument.re_temp_label = re.compile('^\s*[0-9]+:$')
+    instrument.re_label = re.compile('^\s*[a-zA-Z_][a-zA-Z_.0-9]*:$')
+    instrument.re_insn = re.compile('^\s+([a-z][a-z_.0-9]+)(?:\s[^;]*|$)')  # Warn on multi-line asn
+    instrument.re_fralloc = re.compile('^\s+subq\s+\$([0-9]+), %rsp$')
+    instrument.re_comment = re.compile('^\s*#|^\s*$')
+
+  lines = []
+  header_lines = []
+  in_text_section = False
+  in_inline_asm = False
+  in_prologue = False
+  prologue_lines = []
+  func = None
+  frame_size = 0
+  nline = 0
+
+  ninstrs = nfuns = 0
+
+  # Gas wants signed 32-bit imms
+  fill_imm = fill_value & 0xffffffff
+  if fill_imm & 0x80000000:
+    fill_imm = -((~fill_imm + 1) & 0xffffffff)
+
+  cache = RegexCache()
+
+  f_ = open(f, 'r')
+  for l in f_:
+    nline += 1
+    l = l.rstrip('\r\n')
+
+    if in_inline_asm:
+      lines.append(l)
+      if l == '#NO_APP':
+        in_inline_asm = False
+    elif in_prologue:
+      if instrument.re_section.match(l):
+        warn("%s:%d: abort instrumentation of '%s' due to missing prologue" % (f, nline, func))
+        in_text_section = l.find('.text') != -1
+        in_prologue = False
+      elif instrument.re_dir.match(l) or instrument.re_dot_label.match(l) or instrument.re_temp_label.match(l) or instrument.re_comment.match(l):
+        pass
+      elif l == '#APP':
+        warn("%s:%d: abort instrumentation of '%s' due to inline asm: %s" % (f, nline, func, l))
+        in_inline_asm = True
+        in_prologue = False
+      elif cache.match(instrument.re_insn, l):
+        insn = cache.group(1)
+        if insn.startswith('push') and len(insn) > 4:
+          op_sz = op_size(insn[4]) if len(insn) > 4 else -1
+          if op_sz < 0:
+            warn("%s:%d: abort instrumentation of '%s' due to unsafe instruction in prologue: %s" % (f, nline, func, l))
+            in_prologue = False
+          else:
+            note("%s:%d: found push of %d bytes in '%s': %s" % (f, nline, op_sz, func, l))
+            frame_size += op_sz
+        elif cache.match(instrument.re_fralloc, l):
+          frame_size += int(cache.group(1))
+          note("%s:%d: identified frame of '%s' (%d bytes): %s" % (f, nline, func, frame_size, l))
+          if frame_size & 7:
+            Warn("%s:%d: abort instrumentation of '%s' due to unaligned stack: %s" % (f, nline, func, l))
+          else:
+            ninstrs += 1
+            offset = frame_size + 32;  # Just in case
+            lines += [
+              '  #APP',
+              '  sub $%d, %%rsp' % offset,
+              '  pushq $%d' % offset,
+              '  pushq $%d' % fill_imm,
+              '  call __rancc_fill',
+              '  add $%d, %%rsp' % (offset + 16),
+              '  #NO_APP' ]
+          in_prologue = False
+        elif l.find('%[re]?sp') != -1:
+          warn("%s:%d: abort instrumentation of '%s' due to unknown stack pointer modification: %s" % (f, nline, func, l))
+          in_prologue = False
+        # TODO: neg, nog, mul, imul (?)
+        elif insn.startswith(('mov', 'nop', 'add', 'sub', 'mul', 'imul', 'shr', 'shl', 'sar', 'sal', 'ror', 'and', 'or', 'xor', 'pxor', 'por', 'pand', 'bswap', 'not', 'neg')):
+          pass
+        else:
+          # Avoid unknown instructions
+          if not insn.startswith(('j', 'test', 'ret', 'call', 'cmp', 'lea')) or verbose > 1:  # Do not warn when there's a control-flow insn
+            warn("%s:%d: abort instrumentation of '%s' due to unsafe instruction in prologue: %s" % (f, nline, func, l))
+          in_prologue = False
+      elif instrument.re_label.match(l):
+        func2 = l.rstrip(':')
+        warn("%s:%d: abort instrumentation of '%s' due to missing prologue (new function is '%s')" % (f, nline, func, func2))
+        lines += prologue_lines
+        lines.append(l)
+        func = func2
+        prologue_lines = []
+        frame_size = 0
+        nfuns += 1
+        continue
+      else:
+        warn("%s:%d: abort instrumentation of '%s' due to unexpected statement: %s" % (f, nline, func, l))
+        in_prologue = False
+
+      if in_prologue:
+        prologue_lines.append(l)
+      else:
+        lines += prologue_lines
+        lines.append(l)
+        prologue_lines = []
+        frame_size = 0
+        func = None
+    else:
+      if instrument.re_section.match(l):
+        in_text_section = l.find('.text') != -1
+      elif instrument.re_dir.match(l) or instrument.re_dot_label.match(l) or instrument.re_temp_label.match(l) or instrument.re_insn.match(l) or instrument.re_comment.match(l):
+        pass
+      elif instrument.re_label.match(l):
+        if in_text_section:
+          in_prologue = True
+          func = l.rstrip(':')
+          prologue_lines = []
+          frame_size = 0
+          nfuns += 1
+      elif l == '#APP':
+        in_inline_asm = True
+      else:
+        warn('%s:%d: unexpected top-level statement: %s' % (f, nline, l))
+      lines.append(l)
+  f_.close()
+
+  if prologue_lines:
+    warn("%s:%d: abort instrumentation of '%s' due to missing prologue" % (f, nline, func))
+    lines += prologue_lines
+
+  if verbose:
+    Note('%s: %d/%d instrumented' % (f, ninstrs, nfuns))
+
+  f_out_ = open(f_out, 'w')
+  for l in lines:
+    f_out_.write(l + '\n')
+  f_out_.close()
+
+  if dump:
+    print 'Dumping modified %s:' % f
+    for l in lines:
+      print l
+
+def main():
+  global verbose
+  verbose = int(os.getenv('RANAS_VERBOSE', '0'))
+
+  dump = int(os.getenv('RANAS_DUMP', '0'))
+  fill_value = int(os.getenv('RANCC_FILL', '0xcdcdcdcd'), 0)
+
+  argv_string = ' '.join(sys.argv)
+  note('initial args: %s' % argv_string)
+
+  args = ['as']
+  as_files = []
+
+  for arg in sys.argv[1:]:
+    if arg.endswith('.s'):
+      new_fd, new_file = tempfile.mkstemp('.s')
+      os.close(new_fd)  # Who cares...
+      as_files.append((arg, new_file))
+      args.append(new_file)
+    else:
+      args.append(arg)
+
+  if not as_files:
+    Warn('failed to locate .s files: %s' % argv_string)
+
+  for old_file, new_file in as_files:
+    instrument(old_file, new_file, fill_value, dump)
+
+  sys.stdout.flush()
+  sys.stderr.flush()
+
+  # TODO: check for endless loop
+  # TODO: remove temp. files
+  os.execvp(args[0], args)
+
+if __name__ == '__main__':
+  main()

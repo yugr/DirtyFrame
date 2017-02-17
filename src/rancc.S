@@ -1,0 +1,42 @@
+  .text
+  .globl __rancc_fill
+  .hidden __rancc_fill
+__rancc_fill:
+  pushf
+  push %rdi
+  push %rsi
+  push %rdx
+
+  /* Frame layout:
+       48 - frame size
+       40 - fill value
+       32 - saved RA
+       24 - saved flags
+       16 - saved RDI
+       8  - saved RSI
+       0  - saved RDX
+   */
+
+  mov 48(%rsp), %rdi  // frame size
+
+  lea 48(%rsp), %rdx
+  add %rdi, %rdx  // stop address
+
+  lea 48(%rsp), %rdi  // start address
+
+  mov 40(%rsp), %rsi  # fill value
+
+next:
+  cmp %rdi, %rdx
+  jge done
+  mov %esi, (%rdi)
+  add $4, %rdi
+  jmp next
+done:
+
+  pop %rdx
+  pop %rsi
+  pop %rdi
+  popf
+
+  ret

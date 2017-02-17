@@ -1,0 +1,22 @@
+#!/bin/sh -eu
+
+ME=$(basename $0)
+
+if echo $ME | grep -q 'gcc$'; then
+  RANCC=rancc
+else
+  RANCC=ran++
+fi
+
+RANCC=$(dirname $0)/../bin/$RANCC
+
+if ! test -x $RANCC; then
+  echo >&2 "fake-$ME: $RANCC missing"
+  exit 1
+fi
+
+# Select the second (true) gcc
+export RANCC_CC=$(which -a gcc | tail -n +2 | head -1)
+export RANCC_CXX=$(which -a g++ | tail -n +2 | head -1)
+
+exec $RANCC "$@"
