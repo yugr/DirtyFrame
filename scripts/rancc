@@ -61,7 +61,7 @@ def main():
   if has_B:
     Warn('not instrumenting: -B given: %s' % argv_string)
   elif has_pipe:
-    # TODO: this can be easily supported
+    # TODO: this should be stripped, many packages fail to instrument because of this (e.g. perl, systemd, pulseaudio, rtkit, insserv)
     Warn('not instrumenting: -pipe given: %s' % argv_string)
   else:
     args.append('-B' + tooldir)

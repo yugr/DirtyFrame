@@ -2,10 +2,10 @@
 
 ME=$(basename $0)
 
-if echo $ME | grep -q 'gcc$'; then
-  RANCC=rancc
-else
+if echo $ME | grep -q '++$'; then
   RANCC=ran++
+else
+  RANCC=rancc
 fi
 
 RANCC=$(dirname $0)/../bin/$RANCC
@@ -15,8 +15,7 @@ if ! test -x $RANCC; then
   exit 1
 fi
 
-# Select the second (true) gcc
-export RANCC_CC=$(which -a gcc | tail -n +2 | head -1)
-export RANCC_CXX=$(which -a g++ | tail -n +2 | head -1)
+# Remove ourselves from PATH (to avoid recursion)
+PATH=$(echo "$PATH" | tr : '\n' | grep -v fake-gcc | tr '\n' :)
 
 exec $RANCC "$@"
