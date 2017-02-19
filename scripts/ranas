@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 # TODO:
-# * leave/enter
 # * redzones (can we instrument them at all?)
+# * remove temp. files
 
 import sys
 import os
@@ -10,16 +10,17 @@ import re
 import tempfile
 
 verbose = 0
+out = sys.stderr
 
 def Note(msg):
-  sys.stderr.write('ranas: %s\n' % msg)
+  out.write('ranas: %s\n' % msg)
 
 def note(msg):
   if verbose > 1:
     Note(msg)
 
 def Warn(msg):
-    sys.stderr.write('ranas: warning: %s\n' % msg)
+  out.write('ranas: warning: %s\n' % msg)
 
 def warn(msg):
   if verbose > 0:
@@ -199,6 +200,11 @@ def main():
   global verbose
   verbose = int(os.getenv('RANAS_VERBOSE', '0'))
 
+  global out
+  out_name = os.getenv('RANCC_OUTPUT', None)
+  if out_name:
+    out = open(out_name, 'a')
+
   dump = int(os.getenv('RANAS_DUMP', '0'))
   fill_value = int(os.getenv('RANCC_FILL', '0xcdcdcdcd'), 0)
 
@@ -223,11 +229,10 @@ def main():
   for old_file, new_file in as_files:
     instrument(old_file, new_file, fill_value, dump)
 
+  out.flush()
   sys.stdout.flush()
   sys.stderr.flush()
 
-  # TODO: check for endless loop
-  # TODO: remove temp. files
   os.execvp(args[0], args)
 
 if __name__ == '__main__':

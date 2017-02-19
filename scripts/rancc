@@ -3,6 +3,7 @@
 # TODO:
 # * support 32-bits
 # * detect self-recursion
+# * auto-add -save-temps (?)
 
 import sys
 import os
@@ -14,16 +15,17 @@ def has_any_prefix(s, ps):
   return any(map(lambda p: has_prefix(s, p), prefix))
 
 verbose = 0
+out = sys.stderr
 
 def Note(msg):
-  sys.stderr.write('ranas: %s\n' % msg)
+  out.write('ranas: %s\n' % msg)
 
 def note(msg):
   if verbose > 0:
     Note(msg)
 
 def Warn(msg):
-    sys.stderr.write('ranas: warning: %s\n' % msg)
+    out.write('ranas: warning: %s\n' % msg)
 
 def warn(msg):
   if verbose > 0:
@@ -38,6 +40,11 @@ def main():
   cxx = os.getenv('RANCC_CXX', 'g++')
   tooldir = os.getenv('RANCC_TOOL_DIR', mydir + '/../libexec')
   libdir = os.getenv('RANCC_LIB_DIR', mydir + '/../lib')
+
+  global out
+  out_name = os.getenv('RANCC_OUTPUT', None)
+  if out_name:
+    out = open(out_name, 'a')
 
   argv_string = ' '.join(sys.argv)
   note('initial args: %s' % argv_string)
@@ -72,6 +79,7 @@ def main():
 
   note('preprocessed args: %s' % ' '. join(args))
 
+  out.flush()
   sys.stdout.flush()
   sys.stderr.flush()
 
