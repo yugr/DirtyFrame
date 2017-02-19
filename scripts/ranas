@@ -48,6 +48,17 @@ def op_size(s):
     else 8 if s == 'q'
     else -1 )
 
+def gen_call(frame_size, fill_imm):
+  offset = frame_size + 32;  # Just in case
+  return [
+    '  #APP',
+    '  sub $%d, %%rsp' % offset,
+    '  pushq $%d' % offset,
+    '  pushq $%d' % fill_imm,
+    '  call __rancc_fill',
+    '  add $%d, %%rsp' % (offset + 16),  # +16 for two pushq
+    '  #NO_APP' ]
+
 def instrument(f, f_out, fill_value, dump):
   note('instrumenting ' + f)
 
@@ -58,6 +69,7 @@ def instrument(f, f_out, fill_value, dump):
     instrument.re_temp_label = re.compile('^\s*[0-9]+:$')
     instrument.re_label = re.compile('^\s*[a-zA-Z_][a-zA-Z_.0-9]*:$')
     instrument.re_insn = re.compile('^\s+([a-z][a-z_.0-9]+)(?:\s[^;]*|$)')  # Warn on multi-line asn
+    instrument.re_ret = re.compile('^\s+(rep\s+)?ret$')
     instrument.re_fralloc = re.compile('^\s+subq\s+\$([0-9]+), %rsp$')
     instrument.re_comment = re.compile('^\s*#|^\s*$')
 
@@ -72,6 +84,7 @@ def instrument(f, f_out, fill_value, dump):
   nline = 0
 
   ninstrs = nfuns = 0
+  nret_instrs = nrets = 0
 
   # Gas wants signed 32-bit imms
   fill_imm = fill_value & 0xffffffff
@@ -117,15 +130,7 @@ def instrument(f, f_out, fill_value, dump):
             Warn("%s:%d: abort instrumentation of '%s' due to unaligned stack: %s" % (f, nline, func, l))
           else:
             ninstrs += 1
-            offset = frame_size + 32;  # Just in case
-            lines += [
-              '  #APP',
-              '  sub $%d, %%rsp' % offset,
-              '  pushq $%d' % offset,
-              '  pushq $%d' % fill_imm,
-              '  call __rancc_fill',
-              '  add $%d, %%rsp' % (offset + 16),
-              '  #NO_APP' ]
+            lines += gen_call(frame_size, fill_imm)
           in_prologue = False
         elif l.find('%[re]?sp') != -1:
           warn("%s:%d: abort instrumentation of '%s' due to unknown stack pointer modification: %s" % (f, nline, func, l))
@@ -158,11 +163,15 @@ def instrument(f, f_out, fill_value, dump):
         lines += prologue_lines
         lines.append(l)
         prologue_lines = []
-        frame_size = 0
         func = None
     else:
       if instrument.re_section.match(l):
         in_text_section = l.find('.text') != -1
+      elif instrument.re_ret.match(l):
+        nrets += 1
+        if frame_size:
+          lines += gen_call(frame_size, fill_imm)
+          nret_instrs += 1
       elif instrument.re_dir.match(l) or instrument.re_dot_label.match(l) or instrument.re_temp_label.match(l) or instrument.re_insn.match(l) or instrument.re_comment.match(l):
         pass
       elif instrument.re_label.match(l):
@@ -184,7 +193,8 @@ def instrument(f, f_out, fill_value, dump):
     lines += prologue_lines
 
   if verbose:
-    Note('%s: %d/%d instrumented' % (f, ninstrs, nfuns))
+    Note('%s: %d/%d prologues instrumented' % (f, ninstrs, nfuns))
+    Note('%s: %d/%d epilogues instrumented' % (f, nret_instrs, nrets))
 
   f_out_ = open(f_out, 'w')
   for l in lines:
