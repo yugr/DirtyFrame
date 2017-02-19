@@ -54,15 +54,18 @@ def main():
   args = [cxx if cplus else cc]
   has_B = False
   has_pipe = False
-  maybe_link = True
+  maybe_link = False
+  not_link = False
 
   for arg in sys.argv[1:]:
     if has_prefix(arg, '-B'):
       has_B = True
     elif arg in ['-c', '-S', '-E']:
-      maybe_link = False
+      not_link = True
     elif arg == '-pipe':
       has_pipe = True
+    elif arg == '-' or (arg[0] != '-' and arg.find('.') != -1):
+      maybe_link = True
     args.append(arg)
 
   if has_B:
@@ -73,7 +76,7 @@ def main():
   else:
     args.append('-B' + tooldir)
 
-  if maybe_link:
+  if maybe_link and not not_link:
     note('linking: %s' % argv_string)
     args += ['-L' + libdir, '-lrancc']
 
