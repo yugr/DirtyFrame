@@ -55,7 +55,7 @@ def gen_call(frame_size, fill_imm):
     '  sub $%d, %%rsp' % offset,
     '  pushq $%d' % offset,
     '  pushq $%d' % fill_imm,
-    '  call __rancc_fill',
+    '  call __rancc_fill@PLT',
     '  add $%d, %%rsp' % (offset + 16),  # +16 for two pushq
     '  #NO_APP' ]
 
