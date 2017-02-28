@@ -43,5 +43,5 @@ and first 2 hundred packages of [Debian package rating](http://popcon.debian.org
 The tool is only meant to be a prototype so it has lots of limitations.
 Most prominent are
 * only supports x86\_64
- `-pipe` is not supported
+* code is ugly
 
