@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+# Copyright 2017 Yury Gribov
+#
+# Use of this source code is governed by MIT license that can be
+# found in the LICENSE.txt file.
+
 # TODO:
 # * redzones (can we instrument them at all?)
 # * remove temp. files
