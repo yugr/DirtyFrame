@@ -35,6 +35,7 @@ The tool didn't find anything in standard testsuites of
 * sqlite
 * bzip2
 * libexpat
+
 and first 2 hundred packages of [Debian package rating](http://popcon.debian.org/by_vote).
 
 # Limitations and todo
