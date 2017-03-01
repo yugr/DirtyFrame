@@ -31,14 +31,15 @@ __rancc_fill:
 
   mov 40(%rsp), %rsi  # fill value
 
+  # TODO: rep stosd (Oleg)
 next:
   cmp %rdi, %rdx
-  jge done
+  je done
   mov %esi, (%rdi)
   add $4, %rdi
   jmp next
-done:
 
+done:
   pop %rdx
   pop %rsi
   pop %rdi
