@@ -74,6 +74,8 @@ def main():
   else:
     args.append('-B' + tooldir)
 
+  # TODO: it may make sense to emit function directly to asm code to avoid problems
+  # with -nostdlib (e.g. systemd)
   if maybe_link and not not_link:
     note('linking: %s' % argv_string)
     args += ['-L' + libdir, '-lrancc']
