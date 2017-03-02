@@ -4,8 +4,6 @@ StackWipe is a prototype tool which tries to provoke uninitilized data
 errors by filling stack frames with garbage before and after executing
 functions.
 
-The results are negative so I believe the approach isn't viable.
-
 # How to run
 
 Tool is implemented as a thin wrapper around GCC. You can build it
@@ -25,18 +23,7 @@ levels are available too).
 
 # Results
 
-The tool didn't find anything in standard testsuites of
-* libsndfile
-* ffmpeg
-* openssl
-* tiff
-* libpng
-* libarchive
-* sqlite
-* bzip2
-* libexpat
-
-and first 2 hundred packages of [Debian package rating](http://popcon.debian.org/by_vote).
+tbd
 
 # Limitations and todo
 
