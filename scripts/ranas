@@ -54,17 +54,41 @@ def op_size(s):
     else -1 )
 
 # FIXME: this code puzzles debugger, perhaps replace pushes with stores?
-def gen_call(frame_size, fill_imm):
+def emit_fill_stack(frame_size, fill_imm):
   offset = frame_size + 32;  # Just in case
   return [
     '  #APP',
+
+    # "Prologue"
+    '  pushf',  # TODO: probly not really needed
     '  sub $%d, %%rsp' % offset,
-    '  pushq $%d' % offset,
-    '  pushq $0',
-    '  movl $%d, 0(%%rsp)' % fill_imm,
-    '  movl $%d, 4(%%rsp)' % fill_imm,
-    '  call __rancc_fill@PLT',
-    '  add $%d, %%rsp' % (offset + 16),  # +16 for two pushq
+    '  push %rdi',
+    '  push %rcx',
+    '  push %rax',
+
+    # Qword count
+    '  mov $%d, %%rcx' % (offset >> 3),
+
+    # Start address
+    '  lea 24(%rsp), %rdi',
+
+    # Fill value
+    # FIXME: super ugly
+    # TODO: make imm 64-bit
+    '  movl $%d, -8(%%rsp)' % fill_imm,
+    '  movl $%d, -4(%%rsp)' % fill_imm,
+    '  movq -8(%rsp), %rax',
+
+    # Fill with garbage
+    '  cld',
+    '  rep stosq',
+
+    # "Epilogue"
+    '  pop %rax',
+    '  pop %rcx',
+    '  pop %rdi',
+    '  add $%d, %%rsp' % offset,
+    '  popf',
     '  #NO_APP' ]
 
 def instrument(f, f_out, fill_value, dump):
@@ -138,7 +162,7 @@ def instrument(f, f_out, fill_value, dump):
             Warn("%s:%d: abort instrumentation of '%s' due to unaligned stack: %s" % (f, nline, func, l))
           else:
             ninstrs += 1
-            lines += gen_call(frame_size, fill_imm)
+            lines += emit_fill_stack(frame_size, fill_imm)
           in_prologue = False
         # FIXME: this is a BUG, we don't have RE here
         elif l.find('%[re]?sp') != -1:
@@ -179,7 +203,7 @@ def instrument(f, f_out, fill_value, dump):
       elif instrument.re_ret.match(l):
         nrets += 1
         if frame_size:
-          lines += gen_call(frame_size, fill_imm)
+          lines += emit_fill_stack(frame_size, fill_imm)
           nret_instrs += 1
       elif instrument.re_dir.match(l) or instrument.re_dot_label.match(l) or instrument.re_temp_label.match(l) or instrument.re_insn.match(l) or instrument.re_comment.match(l):
         pass
