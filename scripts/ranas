@@ -53,14 +53,13 @@ def op_size(s):
     else 8 if s == 'q'
     else -1 )
 
-# FIXME: this code puzzles debugger, perhaps replace pushes with stores?
-def emit_fill_stack(frame_size, fill_imm):
+def emit_fill_stack(frame_size, fill_value):
   offset = frame_size + 32;  # Just in case
   return [
     '  #APP',
 
     # "Prologue"
-    '  pushf',  # TODO: probly not really needed
+    '  pushf',  # TODO: not really needed?
     '  sub $%d, %%rsp' % offset,
     '  push %rdi',
     '  push %rcx',
@@ -73,11 +72,7 @@ def emit_fill_stack(frame_size, fill_imm):
     '  lea 24(%rsp), %rdi',
 
     # Fill value
-    # FIXME: super ugly
-    # TODO: make imm 64-bit
-    '  movl $%d, -8(%%rsp)' % fill_imm,
-    '  movl $%d, -4(%%rsp)' % fill_imm,
-    '  movq -8(%rsp), %rax',
+    '  mov $0x%x%x, %%rax' % (fill_value, fill_value),
 
     # Fill with garbage
     '  cld',
@@ -119,9 +114,9 @@ def instrument(f, f_out, fill_value, dump):
   nret_instrs = nrets = 0
 
   # Gas wants signed 32-bit imms
-  fill_imm = fill_value & 0xffffffff
-  if fill_imm & 0x80000000:
-    fill_imm = -((~fill_imm + 1) & 0xffffffff)
+  if fill_value != fill_value & 0xffffffff:
+    Warn('fill value must be a 32-bit constant: 0x%x' % fill_value)
+    fill_value &= 0xffffffff
 
   cache = RegexCache()
 
@@ -162,9 +157,8 @@ def instrument(f, f_out, fill_value, dump):
             Warn("%s:%d: abort instrumentation of '%s' due to unaligned stack: %s" % (f, nline, func, l))
           else:
             ninstrs += 1
-            lines += emit_fill_stack(frame_size, fill_imm)
+            lines += emit_fill_stack(frame_size, fill_value)
           in_prologue = False
-        # TODO: neg, nog, mul, imul (?)
         elif insn.startswith(('mov', 'nop', 'add', 'sub', 'mul', 'imul', 'shr', 'shl', 'sar', 'sal', 'ror', 'and', 'or', 'xor', 'pxor', 'por', 'pand', 'bswap', 'not', 'neg')):
           pass
         else:
@@ -199,7 +193,7 @@ def instrument(f, f_out, fill_value, dump):
       elif instrument.re_ret.match(l):
         nrets += 1
         if frame_size:
-          lines += emit_fill_stack(frame_size, fill_imm)
+          lines += emit_fill_stack(frame_size, fill_value)
           nret_instrs += 1
       elif instrument.re_dir.match(l) or instrument.re_dot_label.match(l) or instrument.re_temp_label.match(l) or instrument.re_insn.match(l) or instrument.re_comment.match(l):
         pass
