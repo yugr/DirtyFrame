@@ -164,10 +164,6 @@ def instrument(f, f_out, fill_value, dump):
             ninstrs += 1
             lines += emit_fill_stack(frame_size, fill_imm)
           in_prologue = False
-        # FIXME: this is a BUG, we don't have RE here
-        elif l.find('%[re]?sp') != -1:
-          warn("%s:%d: abort instrumentation of '%s' due to unknown stack pointer modification: %s" % (f, nline, func, l))
-          in_prologue = False
         # TODO: neg, nog, mul, imul (?)
         elif insn.startswith(('mov', 'nop', 'add', 'sub', 'mul', 'imul', 'shr', 'shl', 'sar', 'sal', 'ror', 'and', 'or', 'xor', 'pxor', 'por', 'pand', 'bswap', 'not', 'neg')):
           pass
