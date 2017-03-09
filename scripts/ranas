@@ -239,7 +239,7 @@ def main():
     out = open(out_name, 'a')
 
   dump = int(os.getenv('RANAS_DUMP', '0'))
-  fill_value = int(os.getenv('RANCC_FILL', '0xcdcdcdcd'), 0)
+  fill_value = int(os.getenv('RANAS_FILL', '0xcdcdcdcd'), 0)
 
   argv_string = ' '.join(sys.argv)
   note('initial args: %s' % argv_string)
