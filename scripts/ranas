@@ -53,13 +53,16 @@ def op_size(s):
     else 8 if s == 'q'
     else -1 )
 
+# FIXME: this code puzzles debugger, perhaps replace pushes with stores?
 def gen_call(frame_size, fill_imm):
   offset = frame_size + 32;  # Just in case
   return [
     '  #APP',
     '  sub $%d, %%rsp' % offset,
     '  pushq $%d' % offset,
-    '  pushq $%d' % fill_imm,
+    '  pushq $0',
+    '  movl $%d, 0(%%rsp)' % fill_imm,
+    '  movl $%d, 4(%%rsp)' % fill_imm,
     '  call __rancc_fill@PLT',
     '  add $%d, %%rsp' % (offset + 16),  # +16 for two pushq
     '  #NO_APP' ]
@@ -137,6 +140,7 @@ def instrument(f, f_out, fill_value, dump):
             ninstrs += 1
             lines += gen_call(frame_size, fill_imm)
           in_prologue = False
+        # FIXME: this is a BUG, we don't have RE here
         elif l.find('%[re]?sp') != -1:
           warn("%s:%d: abort instrumentation of '%s' due to unknown stack pointer modification: %s" % (f, nline, func, l))
           in_prologue = False

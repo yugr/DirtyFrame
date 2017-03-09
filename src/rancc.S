@@ -4,13 +4,15 @@
 // found in the LICENSE.txt file.
 
   .text
+
   .globl __rancc_fill
   .hidden __rancc_fill
+
 __rancc_fill:
   pushf
   push %rdi
-  push %rsi
-  push %rdx
+  push %rcx
+  push %rax
 
   /* Frame layout:
        48 - frame size
@@ -18,30 +20,19 @@ __rancc_fill:
        32 - saved RA
        24 - saved flags
        16 - saved RDI
-       8  - saved RSI
-       0  - saved RDX
+       8  - saved RCX
+       0  - saved RAX
    */
 
-  mov 48(%rsp), %rdi  // frame size
-
-  lea 48(%rsp), %rdx
-  add %rdi, %rdx  // stop address
-
+  mov 40(%rsp), %rax  // fill value
+  mov 48(%rsp), %rcx  // frame size
+  shrq $3, %rcx  // qword count
   lea 48(%rsp), %rdi  // start address
+  cld
+  rep stosq
 
-  mov 40(%rsp), %rsi  # fill value
-
-  # TODO: rep stosd (Oleg)
-next:
-  cmp %rdi, %rdx
-  je done
-  mov %esi, (%rdi)
-  add $4, %rdi
-  jmp next
-
-done:
-  pop %rdx
-  pop %rsi
+  pop %rax
+  pop %rcx
   pop %rdi
   popf
 
