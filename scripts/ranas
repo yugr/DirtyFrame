@@ -59,17 +59,17 @@ def emit_fill_stack(frame_size, fill_value):
     '  #APP',
 
     # "Prologue"
-    '  pushf',  # TODO: not really needed?
-    '  sub $%d, %%rsp' % offset,
-    '  push %rdi',
-    '  push %rcx',
-    '  push %rax',
+    # Note that we do not use pushes as these
+    # seem to puzzle gdb.
+    '  mov %%rdi, -%d(%%rsp)' % (offset+8),
+    '  mov %%rcx, -%d(%%rsp)' % (offset+16),
+    '  mov %%rax, -%d(%%rsp)' % (offset+24),
 
     # Qword count
     '  mov $%d, %%rcx' % (offset >> 3),
 
     # Start address
-    '  lea 24(%rsp), %rdi',
+    '  lea -%d(%%rsp), %%rdi' % offset,
 
     # Fill value
     '  mov $0x%x%x, %%rax' % (fill_value, fill_value),
@@ -79,11 +79,9 @@ def emit_fill_stack(frame_size, fill_value):
     '  rep stosq',
 
     # "Epilogue"
-    '  pop %rax',
-    '  pop %rcx',
-    '  pop %rdi',
-    '  add $%d, %%rsp' % offset,
-    '  popf',
+    '  mov -%d(%%rsp), %%rdi' % (offset+8),
+    '  mov -%d(%%rsp), %%rcx' % (offset+16),
+    '  mov -%d(%%rsp), %%rax' % (offset+24),
     '  #NO_APP' ]
 
 def instrument(f, f_out, fill_value, dump):
