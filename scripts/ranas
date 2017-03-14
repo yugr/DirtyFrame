@@ -54,6 +54,7 @@ def op_size(s):
     else -1 )
 
 def emit_fill_stack(frame_size, fill_value):
+  frame_size = min(frame_size, 50 * 1024)  # Kernel will terminate app for large offsets
   offset = frame_size + 32;  # Just in case
   return [
     '  #APP',
