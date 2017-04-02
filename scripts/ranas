@@ -54,7 +54,10 @@ def op_size(s):
     else -1 )
 
 def emit_fill_stack(frame_size, fill_value):
-  frame_size = min(frame_size, 50 * 1024)  # Kernel will terminate app for large offsets
+  # Kernel will terminate app for large offsets
+  # (see "Accessing the stack below %sp is always a bug"
+  # in implementation of __do_page_fault).
+  frame_size = min(frame_size, 50 * 1024)
   offset = frame_size + 32;  # Just in case
   return [
     '  #APP',
