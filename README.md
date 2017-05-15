@@ -1,6 +1,6 @@
 # What's this?
 
-StackWipe is a prototype tool which tries to provoke uninitilized data
+DirtyFrame is a prototype tool which tries to provoke uninitilized data
 errors by filling stack frames with garbage before and after executing
 functions.
 
