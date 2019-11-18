@@ -12,7 +12,7 @@ def has_prefix(s, p):
   return s.find(p) == 0
 
 def has_any_prefix(s, ps):
-  return any(map(lambda p: has_prefix(s, p), prefix))
+  return any(map(lambda p: s.startswith(p), prefix))
 
 verbose = 0
 out = sys.stderr
@@ -39,7 +39,6 @@ def main():
   cc = os.getenv('RANCC_CC', 'gcc')
   cxx = os.getenv('RANCC_CXX', 'g++')
   tooldir = os.getenv('RANCC_TOOL_DIR', mydir + '/../libexec')
-  libdir = os.getenv('RANCC_LIB_DIR', mydir + '/../lib')
 
   global out
   out_name = os.getenv('RANCC_OUTPUT', None)
@@ -53,20 +52,14 @@ def main():
 
   args = [cxx if cplus else cc]
   has_B = False
-  maybe_link = False
-  not_link = False
 
   for arg in sys.argv[1:]:
-    if has_prefix(arg, '-B'):
+    if arg.startswith('-B'):
       has_B = True
-    elif arg in ['-c', '-S', '-E']:
-      not_link = True
     elif arg == '-pipe':
       # Stripping, many packages fail to instrument because of this
       # (e.g. perl, systemd, pulseaudio, insserv, rtkit, apache2, iptables, pulseaudio, vim)
       continue
-    elif arg == '-' or (arg[0] != '-' and arg.find('.') != -1):
-      maybe_link = True
     args.append(arg)
 
   if has_B:
