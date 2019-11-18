@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-# Copyright 2017 Yury Gribov
+# Copyright 2017-2019 Yury Gribov
 #
 # Use of this source code is governed by MIT license that can be
 # found in the LICENSE.txt file.
@@ -97,7 +97,7 @@ def instrument(f, f_out, fill_value, dump):
     instrument.re_dot_label = re.compile('^\s*.L')
     instrument.re_temp_label = re.compile('^\s*[0-9]+:$')
     instrument.re_label = re.compile('^\s*[a-zA-Z_][a-zA-Z_.0-9]*:$')
-    instrument.re_insn = re.compile('^\s+([a-z][a-z_.0-9]+)(?:\s[^;]*|$)')  # Warn on multi-line asn
+    instrument.re_insn = re.compile('^\s+([a-z][a-z_.0-9]+)(?:\s[^;]*|$)')  # Warn on multi-line asm
     instrument.re_ret = re.compile('^\s+(rep\s+)?ret$')
     instrument.re_fralloc = re.compile('^\s+subq\s+\$([0-9]+), %rsp$')
     instrument.re_comment = re.compile('^\s*#|^\s*$')

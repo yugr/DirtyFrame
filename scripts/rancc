@@ -1,5 +1,10 @@
 #!/usr/bin/python
 
+# Copyright 2017-2019 Yury Gribov
+#
+# Use of this source code is governed by MIT license that can be
+# found in the LICENSE.txt file.
+
 # TODO:
 # * support 32-bits
 # * detect self-recursion
@@ -8,28 +13,15 @@
 import sys
 import os
 
-def has_prefix(s, p):
-  return s.find(p) == 0
-
-def has_any_prefix(s, ps):
-  return any(map(lambda p: s.startswith(p), prefix))
-
 verbose = 0
 out = sys.stderr
 
-def Note(msg):
-  out.write('ranas: %s\n' % msg)
-
 def note(msg):
   if verbose > 0:
-    Note(msg)
-
-def Warn(msg):
-    out.write('ranas: warning: %s\n' % msg)
+    out.write('ranas: %s\n' % msg)
 
 def warn(msg):
-  if verbose > 0:
-    Warn(msg)
+  out.write('ranas: warning: %s\n' % msg)
 
 def main():
   mydir = os.path.dirname(os.path.abspath(__file__))
@@ -38,7 +30,7 @@ def main():
   verbose = int(os.getenv('RANCC_VERBOSE', '0'))
   cc = os.getenv('RANCC_CC', 'gcc')
   cxx = os.getenv('RANCC_CXX', 'g++')
-  tooldir = os.getenv('RANCC_TOOL_DIR', mydir + '/../libexec')
+  tooldir = os.getenv('RANCC_TOOL_DIR', os.path.join(mydir, '/../libexec'))
 
   global out
   out_name = os.getenv('RANCC_OUTPUT', None)
@@ -48,9 +40,7 @@ def main():
   argv_string = ' '.join(sys.argv)
   note('initial args: %s' % argv_string)
 
-  cplus = sys.argv[0].find('++') != -1
-
-  args = [cxx if cplus else cc]
+  args = [cxx if '++' in sys.argv[0] else cc]
   has_B = False
 
   for arg in sys.argv[1:]:
@@ -63,7 +53,7 @@ def main():
     args.append(arg)
 
   if has_B:
-    Warn('not instrumenting: -B given: %s' % argv_string)
+    warn('not instrumenting: -B given: %s' % argv_string)
   else:
     args.append('-B' + tooldir)
 
