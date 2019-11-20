@@ -103,7 +103,6 @@ def instrument(f, f_out, fill_value, dump):
     instrument.re_comment = re.compile('^\s*#|^\s*$')
 
   lines = []
-  header_lines = []
   in_text_section = False
   in_inline_asm = False
   in_prologue = False
