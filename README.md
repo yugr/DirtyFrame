@@ -1,3 +1,5 @@
+[![Total alerts](https://img.shields.io/lgtm/alerts/g/yugr/DirtyFrame.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/yugr/DirtyFrame/alerts/)
+
 # What's this?
 
 DirtyFrame is a prototype tool which tries to provoke uninitilized data
