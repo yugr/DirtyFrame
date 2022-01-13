@@ -58,7 +58,7 @@ def emit_fill_stack(frame_size, fill_value):
   # (see "Accessing the stack below %sp is always a bug"
   # in implementation of __do_page_fault).
   frame_size = min(frame_size, 50 * 1024)
-  offset = frame_size + 32;  # Just in case
+  offset = frame_size + 32  # Just in case
   return [
     '  #APP',
 
@@ -92,15 +92,15 @@ def instrument(f, f_out, fill_value, dump):
   note('instrumenting ' + f)
 
   if not hasattr(instrument, 're_dir'):
-    instrument.re_dir = re.compile('^\s*\.[a-z]')
-    instrument.re_section = re.compile('^\s*\.(?:section|text|rodata|data|bss)')
-    instrument.re_dot_label = re.compile('^\s*.L')
-    instrument.re_temp_label = re.compile('^\s*[0-9]+:$')
-    instrument.re_label = re.compile('^\s*[a-zA-Z_][a-zA-Z_.0-9]*:$')
-    instrument.re_insn = re.compile('^\s+([a-z][a-z_.0-9]+)(?:\s[^;]*|$)')  # Warn on multi-line asm
-    instrument.re_ret = re.compile('^\s+(rep\s+)?ret$')
-    instrument.re_fralloc = re.compile('^\s+subq\s+\$([0-9]+), %rsp$')
-    instrument.re_comment = re.compile('^\s*#|^\s*$')
+    instrument.re_dir = re.compile(r'^\s*\.[a-z]')
+    instrument.re_section = re.compile(r'^\s*\.(?:section|text|rodata|data|bss)')
+    instrument.re_dot_label = re.compile(r'^\s*.L')
+    instrument.re_temp_label = re.compile(r'^\s*[0-9]+:$')
+    instrument.re_label = re.compile(r'^\s*[a-zA-Z_][a-zA-Z_.0-9]*:$')
+    instrument.re_insn = re.compile(r'^\s+([a-z][a-z_.0-9]+)(?:\s[^;]*|$)')  # Warn on multi-line asm
+    instrument.re_ret = re.compile(r'^\s+(rep\s+)?ret$')
+    instrument.re_fralloc = re.compile(r'^\s+subq\s+\$([0-9]+), %rsp$')
+    instrument.re_comment = re.compile(r'^\s*#|^\s*$')
 
   lines = []
   in_text_section = False
@@ -226,9 +226,9 @@ def instrument(f, f_out, fill_value, dump):
   f_out_.close()
 
   if dump:
-    print 'Dumping modified %s:' % f
+    print('Dumping modified %s:' % f)
     for l in lines:
-      print l
+      print(l)
 
 def main():
   global verbose
