@@ -25,7 +25,7 @@ In general case you can use _fake_ GCC wrapper:
     PATH=$SRC/out/fake-gcc:$PATH make
 
 To print diagnostic info during execution, export `RANAS_VERBOSE=1` (higher
-levels are available too).
+levels are available too). To abort on warnings export `RANAS_STRICT=1`.
 
 # Results
 

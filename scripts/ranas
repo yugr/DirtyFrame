@@ -15,6 +15,7 @@ import re
 import tempfile
 
 verbose = 0
+strict = False
 out = sys.stderr
 
 def Note(msg):
@@ -26,6 +27,8 @@ def note(msg):
 
 def Warn(msg):
   out.write('ranas: warning: %s\n' % msg)
+  if strict:
+    out.write('ranas: aborting...\n')
 
 def warn(msg):
   if verbose > 0:
@@ -238,6 +241,9 @@ def main():
   out_name = os.getenv('RANCC_OUTPUT', None)
   if out_name:
     out = open(out_name, 'a')
+
+  global strict
+  strict = bool(os.getenv('RANAS_STRICT', False))
 
   dump = int(os.getenv('RANAS_DUMP', '0'))
   fill_value = int(os.getenv('RANAS_FILL', '0xcdcdcdcd'), 0)
