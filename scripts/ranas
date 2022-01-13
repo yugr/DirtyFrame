@@ -94,16 +94,15 @@ def emit_fill_stack(frame_size, fill_value):
 def instrument(f, f_out, fill_value, dump):
   note('instrumenting ' + f)
 
-  if not hasattr(instrument, 're_dir'):
-    instrument.re_dir = re.compile(r'^\s*\.[a-z]')
-    instrument.re_section = re.compile(r'^\s*\.(?:section|text|rodata|data|bss)')
-    instrument.re_dot_label = re.compile(r'^\s*.L')
-    instrument.re_temp_label = re.compile(r'^\s*[0-9]+:$')
-    instrument.re_label = re.compile(r'^\s*[a-zA-Z_][a-zA-Z_.0-9]*:$')
-    instrument.re_insn = re.compile(r'^\s+([a-z][a-z_.0-9]+)(?:\s[^;]*|$)')  # Warn on multi-line asm
-    instrument.re_ret = re.compile(r'^\s+(rep\s+)?ret$')
-    instrument.re_fralloc = re.compile(r'^\s+subq\s+\$([0-9]+), %rsp$')
-    instrument.re_comment = re.compile(r'^\s*#|^\s*$')
+  re_dir = re.compile(r'^\s*\.[a-z]')
+  re_section = re.compile(r'^\s*\.(?:section|text|rodata|data|bss)')
+  re_dot_label = re.compile(r'^\s*.L')
+  re_temp_label = re.compile(r'^\s*[0-9]+:$')
+  re_label = re.compile(r'^\s*[a-zA-Z_][a-zA-Z_.0-9]*:$')
+  re_insn = re.compile(r'^\s+([a-z][a-z_.0-9]+)(?:\s[^;]*|$)')  # Warn on multi-line asm
+  re_ret = re.compile(r'^\s+(rep\s+)?ret$')
+  re_fralloc = re.compile(r'^\s+subq\s+\$([0-9]+), %rsp$')
+  re_comment = re.compile(r'^\s*#|^\s*$')
 
   lines = []
   in_text_section = False
@@ -134,17 +133,17 @@ def instrument(f, f_out, fill_value, dump):
       if l == '#NO_APP':
         in_inline_asm = False
     elif in_prologue:
-      if instrument.re_section.match(l):
+      if re_section.match(l):
         warn("%s:%d: abort instrumentation of '%s' due to missing prologue" % (f, nline, func))
         in_text_section = l.find('.text') != -1
         in_prologue = False
-      elif instrument.re_dir.match(l) or instrument.re_dot_label.match(l) or instrument.re_temp_label.match(l) or instrument.re_comment.match(l):
+      elif re_dir.match(l) or re_dot_label.match(l) or re_temp_label.match(l) or re_comment.match(l):
         pass
       elif l == '#APP':
         warn("%s:%d: abort instrumentation of '%s' due to inline asm: %s" % (f, nline, func, l))
         in_inline_asm = True
         in_prologue = False
-      elif cache.match(instrument.re_insn, l):
+      elif cache.match(re_insn, l):
         insn = cache.group(1)
         if insn.startswith('push') and len(insn) > 4:
           op_sz = op_size(insn[4]) if len(insn) > 4 else -1
@@ -154,7 +153,7 @@ def instrument(f, f_out, fill_value, dump):
           else:
             note("%s:%d: found push of %d bytes in '%s': %s" % (f, nline, op_sz, func, l))
             frame_size += op_sz
-        elif cache.match(instrument.re_fralloc, l):
+        elif cache.match(re_fralloc, l):
           frame_size += int(cache.group(1))
           note("%s:%d: identified frame of '%s' (%d bytes): %s" % (f, nline, func, frame_size, l))
           if frame_size & 7:
@@ -170,7 +169,7 @@ def instrument(f, f_out, fill_value, dump):
           if not insn.startswith(('j', 'test', 'ret', 'call', 'cmp', 'lea')) or verbose > 1:  # Do not warn when there's a control-flow insn
             warn("%s:%d: abort instrumentation of '%s' due to unsafe instruction in prologue: %s" % (f, nline, func, l))
           in_prologue = False
-      elif instrument.re_label.match(l):
+      elif re_label.match(l):
         func2 = l.rstrip(':')
         warn("%s:%d: abort instrumentation of '%s' due to missing prologue (new function is '%s')" % (f, nline, func, func2))
         lines += prologue_lines
@@ -192,16 +191,16 @@ def instrument(f, f_out, fill_value, dump):
         prologue_lines = []
         func = None
     else:
-      if instrument.re_section.match(l):
+      if re_section.match(l):
         in_text_section = l.find('.text') != -1
-      elif instrument.re_ret.match(l):
+      elif re_ret.match(l):
         nrets += 1
         if frame_size:
           lines += emit_fill_stack(frame_size, fill_value)
           nret_instrs += 1
-      elif instrument.re_dir.match(l) or instrument.re_dot_label.match(l) or instrument.re_temp_label.match(l) or instrument.re_insn.match(l) or instrument.re_comment.match(l):
+      elif re_dir.match(l) or re_dot_label.match(l) or re_temp_label.match(l) or re_insn.match(l) or re_comment.match(l):
         pass
-      elif instrument.re_label.match(l):
+      elif re_label.match(l):
         if in_text_section:
           in_prologue = True
           func = l.rstrip(':')
