@@ -30,7 +30,7 @@ def main():
   verbose = int(os.getenv('RANCC_VERBOSE', '0'))
   cc = os.getenv('RANCC_CC', 'gcc')
   cxx = os.getenv('RANCC_CXX', 'g++')
-  tooldir = os.getenv('RANCC_TOOL_DIR', os.path.join(mydir, '/../libexec'))
+  tooldir = os.getenv('RANCC_TOOL_DIR', os.path.join(mydir, '../libexec'))
 
   global out
   out_name = os.getenv('RANCC_OUTPUT', None)
