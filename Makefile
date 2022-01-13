@@ -40,7 +40,7 @@ $(O)/libexec/as: scripts/ranas
 	cp $^ $@
 
 test:
-	tests/runtests.sh
+	@tests/runtests.sh
 
 clean:
 	rm -rf $(O)/bin/* $(O)/libexec/* $(O)/lib/* $(O)/fake-gcc/*
