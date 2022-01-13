@@ -1,3 +1,5 @@
+[![License](http://img.shields.io/:license-MIT-blue.svg)](https://github.com/yugr/DirtyFrame/blob/master/LICENSE.txt)
+[![Build Status](https://github.com/yugr/DirtyFrame/actions/workflows/ci.yml/badge.svg)](https://github.com/yugr/DirtyFrame/actions)
 [![Total alerts](https://img.shields.io/lgtm/alerts/g/yugr/DirtyFrame.svg?logo=lgtm&logoWidth=18)](https://lgtm.com/projects/g/yugr/DirtyFrame/alerts/)
 
 # What's this?
