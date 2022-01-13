@@ -1,0 +1,27 @@
+# TODO:
+# * add python versions to matrix
+# * coverage
+# * pylint
+# * Semmle
+
+name: CI
+on:
+  push:
+    paths-ignore:
+    - 'LICENSE.txt'
+    - 'README.md'
+  pull_request:
+    paths-ignore:
+    - 'LICENSE.txt'
+    - 'README.md'
+jobs:
+  Baseline:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-18.04, ubuntu-20.04, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run tests
+      run: scripts/travis.sh
