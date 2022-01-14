@@ -56,11 +56,11 @@ class RegexCache:
     return self.last_match.group(n)
 
 def op_size(s):
-  return ( 1 if s == 'b'
-    else 2 if s == 'w'
-    else 4 if s == 'l'
-    else 8 if s == 'q'
-    else -1 )
+  return (1 if s == 'b'
+          else 2 if s == 'w'
+          else 4 if s == 'l'
+          else 8 if s == 'q'
+          else -1)
 
 def emit_fill_stack(frame_size, fill_value):
   # Kernel will terminate app for large offsets
@@ -95,7 +95,7 @@ def emit_fill_stack(frame_size, fill_value):
     f'  mov -{offset + 8}(%rsp), %rdi',
     f'  mov -{offset + 16}(%rsp), %rcx',
     f'  mov -{offset + 24}(%rsp), %rax',
-    '  #NO_APP' ]
+    '  #NO_APP']
 
 def instrument(f, f_out, fill_value, dump):
   note('instrumenting ' + f)

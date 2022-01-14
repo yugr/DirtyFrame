@@ -42,7 +42,11 @@ $(O)/libexec/as: scripts/ranas
 test:
 	@tests/runtests.sh
 
+pylint:
+	pylint scripts/rancc
+	pylint scripts/ranas
+
 clean:
 	rm -rf $(O)/bin/* $(O)/libexec/* $(O)/lib/* $(O)/fake-gcc/*
 
-.PHONY: all clean test fakes
+.PHONY: all clean test fakes pylint
