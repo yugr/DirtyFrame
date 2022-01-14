@@ -9,6 +9,10 @@
 # * redzones (can we instrument them at all?)
 # * remove temp. files
 
+"""
+A wrapper for as(1) which inserts instrumentation code in pro/epilogues.
+"""
+
 import sys
 import os
 import re
@@ -19,14 +23,14 @@ strict = False
 out = sys.stderr
 
 def Note(msg):
-  out.write('ranas: %s\n' % msg)
+  out.write(f'ranas: {msg}\n')
 
 def note(msg):
   if verbose > 1:
     Note(msg)
 
 def Warn(msg):
-  out.write('ranas: warning: %s\n' % msg)
+  out.write(f'ranas: warning: {msg}\n')
   if strict:
     out.write('ranas: aborting...\n')
 
@@ -34,7 +38,9 @@ def warn(msg):
   if verbose > 0:
     Warn(msg)
 
-class RegexCache(object):
+class RegexCache:
+  "A wrapper to avoid creating temporary re.match objects."
+
   def __init__(self):
     self.last_match = None
 
@@ -68,27 +74,27 @@ def emit_fill_stack(frame_size, fill_value):
     # "Prologue"
     # Note that we do not use pushes as these
     # seem to puzzle gdb.
-    '  mov %%rdi, -%d(%%rsp)' % (offset+8),
-    '  mov %%rcx, -%d(%%rsp)' % (offset+16),
-    '  mov %%rax, -%d(%%rsp)' % (offset+24),
+    f'  mov %rdi, -{offset + 8}(%rsp)',
+    f'  mov %rcx, -{offset + 16}(%rsp)',
+    f'  mov %rax, -{offset + 24}(%rsp)',
 
     # Qword count
-    '  mov $%d, %%rcx' % (offset >> 3),
+    f'  mov ${offset >> 3}, %rcx',
 
     # Start address
-    '  lea -%d(%%rsp), %%rdi' % offset,
+    f'  lea -{offset}(%rsp), %rdi',
 
     # Fill value
-    '  mov $0x%x%x, %%rax' % (fill_value, fill_value),
+    f'  mov $0x{fill_value:x}{fill_value:x}, %rax',
 
     # Fill with garbage
     '  cld',
     '  rep stosq',
 
     # "Epilogue"
-    '  mov -%d(%%rsp), %%rdi' % (offset+8),
-    '  mov -%d(%%rsp), %%rcx' % (offset+16),
-    '  mov -%d(%%rsp), %%rax' % (offset+24),
+    f'  mov -{offset + 8}(%rsp), %rdi',
+    f'  mov -{offset + 16}(%rsp), %rcx',
+    f'  mov -{offset + 24}(%rsp), %rax',
     '  #NO_APP' ]
 
 def instrument(f, f_out, fill_value, dump):
@@ -111,21 +117,21 @@ def instrument(f, f_out, fill_value, dump):
   prologue_lines = []
   func = None
   frame_size = 0
-  nline = 0
 
   ninstrs = nfuns = 0
   nret_instrs = nrets = 0
 
   # Gas wants signed 32-bit imms
   if fill_value != fill_value & 0xffffffff:
-    Warn('fill value must be a 32-bit constant: 0x%x' % fill_value)
+    Warn(f'fill value must be a 32-bit constant: 0x{fill_value:x}')
     fill_value &= 0xffffffff
 
   cache = RegexCache()
 
-  f_ = open(f, 'r')
-  for l in f_:
-    nline += 1
+  with open(f, 'r') as f_:
+    old_lines = f_.readlines()
+
+  for nline, l in enumerate(old_lines, 1):
     l = l.rstrip('\r\n')
 
     if in_inline_asm:
@@ -134,13 +140,16 @@ def instrument(f, f_out, fill_value, dump):
         in_inline_asm = False
     elif in_prologue:
       if re_section.match(l):
-        warn("%s:%d: abort instrumentation of '%s' due to missing prologue" % (f, nline, func))
+        warn(f"{f}:{nline}: abort instrumentation of '{func}' due to missing prologue")
         in_text_section = l.find('.text') != -1
         in_prologue = False
-      elif re_dir.match(l) or re_dot_label.match(l) or re_temp_label.match(l) or re_comment.match(l):
+      elif re_dir.match(l) \
+          or re_dot_label.match(l) \
+          or re_temp_label.match(l) \
+          or re_comment.match(l):
         pass
       elif l == '#APP':
-        warn("%s:%d: abort instrumentation of '%s' due to inline asm: %s" % (f, nline, func, l))
+        warn(f"{f}:{nline}: abort instrumentation of '{func}' due to inline asm: {l}")
         in_inline_asm = True
         in_prologue = False
       elif cache.match(re_insn, l):
@@ -148,30 +157,37 @@ def instrument(f, f_out, fill_value, dump):
         if insn.startswith('push') and len(insn) > 4:
           op_sz = op_size(insn[4]) if len(insn) > 4 else -1
           if op_sz < 0:
-            warn("%s:%d: abort instrumentation of '%s' due to unsafe instruction in prologue: %s" % (f, nline, func, l))
+            warn(f"{f}:{nline}: abort instrumentation of '{func}' "
+                 f"due to unsafe instruction in prologue: {l}")
             in_prologue = False
           else:
-            note("%s:%d: found push of %d bytes in '%s': %s" % (f, nline, op_sz, func, l))
+            note(f"{f}:{nline}: found push of {op_sz} bytes in '{func}': {l}")
             frame_size += op_sz
         elif cache.match(re_fralloc, l):
           frame_size += int(cache.group(1))
-          note("%s:%d: identified frame of '%s' (%d bytes): %s" % (f, nline, func, frame_size, l))
+          note(f"{f}:{nline}: identified frame of '{func}' ({frame_size} bytes): {l}")
           if frame_size & 7:
-            Warn("%s:%d: abort instrumentation of '%s' due to unaligned stack: %s" % (f, nline, func, l))
+            Warn(f"{f}:{nline}: abort instrumentation of '{func}' due to unaligned stack: {l}")
           else:
             ninstrs += 1
             lines += emit_fill_stack(frame_size, fill_value)
           in_prologue = False
-        elif insn.startswith(('mov', 'nop', 'add', 'sub', 'mul', 'imul', 'shr', 'shl', 'sar', 'sal', 'ror', 'and', 'or', 'xor', 'pxor', 'por', 'pand', 'bswap', 'not', 'neg', 'endbr')):
+        elif insn.startswith(('mov', 'nop', 'add', 'sub', 'mul', 'imul',
+                              'shr', 'shl', 'sar', 'sal', 'ror', 'and', 'or',
+                              'xor', 'pxor', 'por', 'pand', 'bswap', 'not',
+                              'neg', 'endbr')):
           pass
         else:
           # Avoid unknown instructions
-          if not insn.startswith(('j', 'test', 'ret', 'call', 'cmp', 'lea')) or verbose > 1:  # Do not warn when there's a control-flow insn
-            warn("%s:%d: abort instrumentation of '%s' due to unsafe instruction in prologue: %s" % (f, nline, func, l))
+          if not insn.startswith(('j', 'test', 'ret', 'call', 'cmp', 'lea')) \
+              or verbose > 1:  # Do not warn when there's a control-flow insn
+            warn(f"{f}:{nline}: abort instrumentation of '{func}' "
+                 f"due to unsafe instruction in prologue: {l}")
           in_prologue = False
       elif re_label.match(l):
         func2 = l.rstrip(':')
-        warn("%s:%d: abort instrumentation of '%s' due to missing prologue (new function is '%s')" % (f, nline, func, func2))
+        warn(f"{f}:{nline}: abort instrumentation of '{func}' "
+             f"due to missing prologue (new function is '{func2}')")
         lines += prologue_lines
         lines.append(l)
         func = func2
@@ -180,7 +196,7 @@ def instrument(f, f_out, fill_value, dump):
         nfuns += 1
         continue
       else:
-        warn("%s:%d: abort instrumentation of '%s' due to unexpected statement: %s" % (f, nline, func, l))
+        warn(f"{f}:{nline}: abort instrumentation of '{func}' due to unexpected statement: {l}")
         in_prologue = False
 
       if in_prologue:
@@ -198,7 +214,11 @@ def instrument(f, f_out, fill_value, dump):
         if frame_size:
           lines += emit_fill_stack(frame_size, fill_value)
           nret_instrs += 1
-      elif re_dir.match(l) or re_dot_label.match(l) or re_temp_label.match(l) or re_insn.match(l) or re_comment.match(l):
+      elif re_dir.match(l) \
+          or re_dot_label.match(l) \
+          or re_temp_label.match(l) \
+          or re_insn.match(l) \
+          or re_comment.match(l):
         pass
       elif re_label.match(l):
         if in_text_section:
@@ -210,25 +230,23 @@ def instrument(f, f_out, fill_value, dump):
       elif l == '#APP':
         in_inline_asm = True
       else:
-        warn('%s:%d: unexpected top-level statement: %s' % (f, nline, l))
+        warn(f'{f}:{nline}: unexpected top-level statement: {l}')
       lines.append(l)
-  f_.close()
 
   if prologue_lines:
-    warn("%s:%d: abort instrumentation of '%s' due to missing prologue" % (f, nline, func))
+    warn(f"{f}: abort instrumentation of '{func}' due to missing prologue")
     lines += prologue_lines
 
   if verbose:
-    Note('%s: %d/%d prologues instrumented' % (f, ninstrs, nfuns))
-    Note('%s: %d/%d epilogues instrumented' % (f, nret_instrs, nrets))
+    Note(f'{f}: {ninstrs}/{nfuns} prologues instrumented')
+    Note(f'{f}: {nret_instrs}/{nrets} epilogues instrumented')
 
-  f_out_ = open(f_out, 'w')
-  for l in lines:
-    f_out_.write(l + '\n')
-  f_out_.close()
+  with open(f_out, 'w') as f_out_:
+    for l in lines:
+      f_out_.write(l + '\n')
 
   if dump:
-    print('Dumping modified %s:' % f)
+    print(f'Dumping modified {f}:')
     for l in lines:
       print(l)
 
@@ -239,16 +257,16 @@ def main():
   global out
   out_name = os.getenv('RANCC_OUTPUT', None)
   if out_name:
-    out = open(out_name, 'a')
+    out = open(out_name, 'a')  # pylint: disable=consider-using-with
 
   global strict
-  strict = bool(os.getenv('RANAS_STRICT', False))
+  strict = bool(os.getenv('RANAS_STRICT', 'False'))
 
   dump = int(os.getenv('RANAS_DUMP', '0'))
   fill_value = int(os.getenv('RANAS_FILL', '0xcdcdcdcd'), 0)
 
   argv_string = ' '.join(sys.argv)
-  note('initial args: %s' % argv_string)
+  note(f'initial args: {argv_string}')
 
   args = ['as']
   as_files = []
@@ -263,7 +281,7 @@ def main():
       args.append(arg)
 
   if not as_files:
-    Warn('failed to locate .s files: %s' % argv_string)
+    Warn(f'failed to locate .s files: {argv_string}')
 
   for old_file, new_file in as_files:
     instrument(old_file, new_file, fill_value, dump)

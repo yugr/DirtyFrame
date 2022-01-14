@@ -22,10 +22,10 @@ out = sys.stderr
 
 def note(msg):
   if verbose > 0:
-    out.write('ranas: %s\n' % msg)
+    out.write(f'ranas: {msg}\n')
 
 def warn(msg):
-  out.write('ranas: warning: %s\n' % msg)
+  out.write(f'ranas: warning: {msg}\n')
 
 def main():
   mydir = os.path.dirname(os.path.abspath(__file__))
@@ -39,10 +39,10 @@ def main():
   global out
   out_name = os.getenv('RANCC_OUTPUT', None)
   if out_name:
-    out = open(out_name, 'a')
+    out = open(out_name, 'a')  # pylint: disable=consider-using-with
 
   argv_string = ' '.join(sys.argv)
-  note('initial args: %s' % argv_string)
+  note(f'initial args: {argv_string}')
 
   args = [cxx if '++' in sys.argv[0] else cc]
   has_B = False
@@ -57,11 +57,11 @@ def main():
     args.append(arg)
 
   if has_B:
-    warn('not instrumenting: -B given: %s' % argv_string)
+    warn(f'not instrumenting: -B given: {argv_string}')
   else:
     args.append('-B' + tooldir)
 
-  note('preprocessed args: %s' % ' '. join(args))
+  note('preprocessed args: ' + ' '. join(args))
 
   out.flush()
   sys.stdout.flush()
