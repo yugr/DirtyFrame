@@ -18,9 +18,17 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-18.04, ubuntu-20.04, ubuntu-latest]
+        py: [python3.6, python3.7, python3]  # Need fstrings so 3.6+
     runs-on: ${{ matrix.os }}
+    env:
+      PYTHON: ${{ matrix.py }}
     steps:
     - uses: actions/checkout@v2
+    - name: Install deps
+      run: |
+        sudo add-apt-repository ppa:deadsnakes/ppa
+        sudo apt-get update
+        sudo apt-get install ${PYTHON}
     - name: Run tests
       run: scripts/travis.sh
   Pylint:
