@@ -1,9 +1,13 @@
-#!/usr/bin/python
+#!/usr/bin/env python3
 
 # Copyright 2017-2022 Yury Gribov
 #
 # Use of this source code is governed by MIT license that can be
 # found in the LICENSE.txt file.
+
+"""
+Compiler wrapper which sole purpose is to redirect asm calls to ranas.
+"""
 
 # TODO:
 # * support 32-bits
