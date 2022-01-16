@@ -38,4 +38,3 @@ jobs:
       run: sudo apt-get install pylint
     - name: Run tests
       run: make pylint
-
