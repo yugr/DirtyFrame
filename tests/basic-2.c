@@ -10,7 +10,7 @@ int check(int *p, size_t n) {
 }
 
 int foo() {
-  int buf[120];
+  int buf[128];
   return check(buf, sizeof(buf) / sizeof(buf[0]));
 }
 

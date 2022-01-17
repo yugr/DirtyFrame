@@ -21,7 +21,7 @@ void fill(void *p, size_t n) {
 
 NOINLINE
 void *foo(size_t *n) {
-  int buf[120];
+  int buf[128];
   fill(buf, sizeof(buf));
   *n = sizeof(buf) / sizeof(buf[0]);
   int * volatile p = buf; // Silence compiler
