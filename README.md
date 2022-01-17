@@ -4,7 +4,8 @@
 
 # What's this?
 
-DirtyFrame is a prototype tool which tries to provoke uninitilized data
+DirtyFrame (formerly StackWipe, StackRandomizer) is a prototype tool
+which tries to provoke uninitilized data
 errors by filling stack frames with garbage before and after executing
 functions.
 
