@@ -1,4 +1,6 @@
 out
 .*swp
 .gdb_history
-.coverage
+.coverage*
+coverage.xml
+tmp

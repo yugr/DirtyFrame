@@ -47,6 +47,6 @@ pylint:
 	pylint scripts/ranas
 
 clean:
-	rm -rf $(O)/bin/* $(O)/libexec/* $(O)/lib/* $(O)/fake-gcc/*
+	rm -rf $(O)/bin/* $(O)/libexec/* $(O)/lib/* $(O)/fake-gcc/* test/.coverage* test/coverage.xml
 
 .PHONY: all clean test fakes pylint

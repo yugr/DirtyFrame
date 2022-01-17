@@ -31,5 +31,13 @@ EOF
   export PATH=$PWD/tmp:$PATH
 fi
 
-make
+make clean all
 make test
+
+# Collect coverage
+
+if test -n "${COVERAGE:-}"; then
+  (cd tests && coverage combine && coverage xml)
+  curl --retry 5 -s https://codecov.io/bash > codecov.bash
+  bash codecov.bash -Z
+fi

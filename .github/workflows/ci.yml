@@ -38,3 +38,18 @@ jobs:
       run: sudo apt-get install pylint
     - name: Run tests
       run: make pylint
+  Coverage:
+    needs: Baseline
+    runs-on: ubuntu-latest
+    environment: secrets
+    env:
+      COVERAGE: 1
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install deps
+      run: sudo python3 -m pip install codecov
+    - name: Run tests and upload coverage
+      env:
+        PYTHON: coverage run -p
+      run: scripts/travis.sh
