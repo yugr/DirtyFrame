@@ -41,7 +41,8 @@ The tool didn't find anything in standard testsuites of
 * bzip2
 * libexpat
 
-and first 2 hundred packages of [Debian package rating](http://popcon.debian.org/by_vote).
+and first 500 packages of [Debian package rating](http://popcon.debian.org/by_vote)
+so I believe it's not very useful.
 
 # Limitations and todo
 
