@@ -4,6 +4,9 @@
 
 # What's this?
 
+NOTE: this seems to be largely superseded by GCC's [-ftrivial-auto-var-init=pattern](https://gcc.gnu.org/onlinedocs/gcc/Optimize-Options.html#index-ftrivial-auto-var-init)
+and [-fstrub](https://gcc.gnu.org/onlinedocs/gcc/Instrumentation-Options.html#index-fstrub_003dstrict).
+
 DirtyFrame (formerly StackWipe, StackRandomizer) is a prototype tool
 which tries to provoke uninitilized data
 errors by filling stack frames with garbage before and after executing
